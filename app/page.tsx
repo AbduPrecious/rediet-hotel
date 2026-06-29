@@ -10,7 +10,7 @@ interface Review {
   documentId: string;
   guestName: string;
   rating: number;
-  comment: string;      // ✅ This is the review text
+  comment: string;
   room?: {
     title: string;
   };
@@ -39,6 +39,21 @@ interface Amenity {
   order: number;
 }
 
+interface MenuItem {
+  id: number;
+  documentId: string;
+  name: string;
+  description: string;
+  price: number;
+  category: 'breakfast' | 'lunch' | 'dinner' | 'drinks';
+  isAvailable: boolean;
+  order: number;
+  image?: {
+    url: string;
+    alternativeText?: string;
+  };
+}
+
 async function getRooms(): Promise<Room[]> {
   try {
     const response: StrapiResponse<Room[]> = await fetchAPI('/rooms?populate=*');
@@ -51,7 +66,6 @@ async function getRooms(): Promise<Room[]> {
 
 async function getReviews(): Promise<Review[]> {
   try {
-    // ✅ Most compatible version
     const response: StrapiResponse<Review[]> = await fetchAPI('/reviews?populate=*');
     return response.data || [];
   } catch (error) {
@@ -59,12 +73,24 @@ async function getReviews(): Promise<Review[]> {
     return [];
   }
 }
+
 async function getAmenities(): Promise<Amenity[]> {
   try {
     const response: StrapiResponse<Amenity[]> = await fetchAPI('/amenities?populate=image');
     return response.data || [];
   } catch (error) {
     console.error('Failed to fetch amenities:', error);
+    return [];
+  }
+}
+
+// ===== FETCH MENU ITEMS =====
+async function getMenuItems(): Promise<MenuItem[]> {
+  try {
+    const response = await fetchAPI('/menus?sort=order&populate=image');
+    return response.data || [];
+  } catch (error) {
+    console.error('Failed to fetch menu items:', error);
     return [];
   }
 }
@@ -129,9 +155,9 @@ export default async function Home() {
   const hotelInfo = await getHotelInfo();
   const reviews = await getReviews();
   const amenities = await getAmenities();
+  const menuItems = await getMenuItems();
 
   const featuredRooms = rooms.filter(room => room.featured);
- 
 
   const heroImageUrl = hotelInfo?.heroImage?.url 
     ? `${STRAPI_URL}${hotelInfo.heroImage.url}` 
@@ -140,6 +166,14 @@ export default async function Home() {
   console.log('🖼️ Hero Image URL:', heroImageUrl);
   console.log('🏨 Hotel Info:', hotelInfo);
   console.log('📸 Hero Image Object:', hotelInfo?.heroImage);
+
+  // Group menu items by category
+  const groupedMenu = menuItems.reduce((acc: any, item: any) => {
+    const category = item.category || 'other';
+    if (!acc[category]) acc[category] = [];
+    acc[category].push(item);
+    return acc;
+  }, {});
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-950 transition-colors duration-300">
@@ -194,101 +228,167 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* ===== FEATURED ROOMS ===== */}
-{featuredRooms.length > 0 && (
-  <section className="py-16 px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-gray-900 scroll-mt-5" id="rooms">
-    <div className="max-w-7xl mx-auto">
-      <div className="text-center mb-12">
-        <h2 className="text-3xl md:text-4xl font-bold text-gray-800 dark:text-white">⭐ Featured Rooms</h2>
-        <p className="text-gray-500 dark:text-gray-400 mt-2 text-lg">Our most popular accommodations</p>
-        <div className="w-16 h-1 bg-gradient-to-r from-blue-600 to-purple-600 mx-auto mt-4 rounded-full"></div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {featuredRooms.map((room) => (
-          <div 
-            key={room.documentId} 
-            className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm hover:shadow-2xl transition-all duration-300 overflow-hidden group flex flex-col h-full"
-          >
-            <div className="relative h-64 bg-gray-200 dark:bg-gray-700 overflow-hidden flex-shrink-0">
-              {room.images?.[0]?.url ? (
-                <img
-                  src={`${STRAPI_URL}${room.images[0].url}`}
-                  alt={room.title}
-                  className="w-full h-full object-cover group-hover:scale-110 transition duration-500"
-                />
-              ) : (
-                <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 flex items-center justify-center text-gray-400">
-                  No image
-                </div>
-              )}
-              <div className="absolute top-3 right-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm font-semibold px-4 py-2 rounded-full shadow-lg">
-                {room.price} ETB / night
-              </div>
+      {/* ===== FOOD MENU ===== */}
+      {menuItems.length > 0 && (
+        <section className="py-16 px-4 sm:px-6 lg:px-8 bg-white dark:bg-gray-950" id="menu">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-12">
+              <span className="text-sm font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Our Menu</span>
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-800 dark:text-white mt-2">Food & Drinks</h2>
+              <p className="text-gray-500 dark:text-gray-400 mt-2 text-lg max-w-2xl mx-auto">
+                Delicious meals prepared with love
+              </p>
+              <div className="w-16 h-1 bg-gradient-to-r from-blue-600 to-purple-600 mx-auto mt-4 rounded-full"></div>
             </div>
-            
-            <div className="p-6 md:p-8 flex flex-col flex-grow">
-              <h3 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white mb-2">{room.title}</h3>
-              <p className="text-base md:text-lg text-gray-600 dark:text-gray-300 mb-4 line-clamp-2 flex-grow">{renderDescription(room.description)}</p>
-              
-              <div className="mb-5">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Amenities</span>
-                  <span className="text-sm bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 text-blue-700 dark:text-blue-300 px-2.5 py-0.5 rounded-full font-medium">
-                    {room.amenities?.length || 0}
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {room.amenities?.slice(0, 4).map((item: string, i: number) => {
-                    const icon = getAmenityIcon(item);
-                    const colors = [
-                      'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800',
-                      'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800',
-                      'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800',
-                      'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800',
-                      'bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-900/30 dark:text-pink-300 dark:border-pink-800',
-                      'bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-900/30 dark:text-teal-300 dark:border-teal-800',
-                    ];
-                    const color = colors[i % colors.length];
-                    
-                    return (
-                      <span 
-                        key={i} 
-                        className={`inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-full border ${color} transition-all duration-300 hover:scale-110 hover:shadow-md cursor-default`}
-                      >
-                        <span className="text-base">{icon}</span>
-                        {item}
-                      </span>
-                    );
-                  })}
-                  {room.amenities?.length > 4 && (
-                    <span className="inline-flex items-center text-sm font-medium px-3 py-1.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600">
-                      +{room.amenities.length - 4} more
-                    </span>
-                  )}
-                </div>
-              </div>
 
-              {/* View Details Button - Always at bottom */}
-              <Link
-                href={`/rooms/${room.slug}`}
-                className="group relative inline-flex items-center justify-center w-full gap-2 px-6 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-base font-semibold rounded-xl transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/30 hover:scale-[1.02] overflow-hidden mt-auto"
-              >
-                <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></span>
-                <span className="relative flex items-center gap-2">
-                  View Details
-                  <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                  </svg>
-                </span>
-              </Link>
+            {/* Category Tabs */}
+            <div className="flex flex-wrap justify-center gap-2 mb-8">
+              {Object.keys(groupedMenu).map((category) => (
+                <button
+                  key={category}
+                  className="px-4 py-2 rounded-full text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-blue-600 hover:text-white transition"
+                >
+                  {category.charAt(0).toUpperCase() + category.slice(1)}
+                </button>
+              ))}
+            </div>
+
+            {/* Menu Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {menuItems.map((item: any) => {
+                const imageUrl = item.image?.url 
+                  ? `${STRAPI_URL}${item.image.url}` 
+                  : null;
+
+                return (
+                  <div
+                    key={item.documentId}
+                    className="bg-gray-50 dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 flex flex-col"
+                  >
+                    {imageUrl && (
+                      <div className="relative h-56 md:h-64 overflow-hidden">
+                        <img
+                          src={imageUrl}
+                          alt={item.name}
+                          className="w-full h-full object-cover hover:scale-110 transition duration-500"
+                        />
+                        <div className="absolute top-3 right-3 bg-blue-600 text-white text-xs font-semibold px-3 py-1 rounded-full">
+                          {item.category}
+                        </div>
+                      </div>
+                    )}
+                    <div className="p-5 flex flex-col flex-grow">
+                      <div className="flex items-start justify-between mb-2">
+                        <h3 className="text-lg font-bold text-gray-800 dark:text-white">{item.name}</h3>
+                        <span className="text-lg font-bold text-blue-600 dark:text-blue-400">ETB {item.price}</span>
+                      </div>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 flex-grow">{item.description}</p>
+                      {!item.isAvailable && (
+                        <span className="mt-2 text-xs text-red-500 font-semibold">❌ Currently Unavailable</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
-        ))}
-      </div>
-    </div>
-  </section>
-)}
+        </section>
+      )}
+
+      {/* ===== FEATURED ROOMS ===== */}
+      {featuredRooms.length > 0 && (
+        <section className="py-16 px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-gray-900 scroll-mt-5" id="rooms">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-800 dark:text-white">⭐ Featured Rooms</h2>
+              <p className="text-gray-500 dark:text-gray-400 mt-2 text-lg">Our most popular accommodations</p>
+              <div className="w-16 h-1 bg-gradient-to-r from-blue-600 to-purple-600 mx-auto mt-4 rounded-full"></div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {featuredRooms.map((room) => (
+                <div 
+                  key={room.documentId} 
+                  className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm hover:shadow-2xl transition-all duration-300 overflow-hidden group flex flex-col h-full"
+                >
+                  <div className="relative h-64 bg-gray-200 dark:bg-gray-700 overflow-hidden flex-shrink-0">
+                    {room.images?.[0]?.url ? (
+                      <img
+                        src={`${STRAPI_URL}${room.images[0].url}`}
+                        alt={room.title}
+                        className="w-full h-full object-cover group-hover:scale-110 transition duration-500"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 flex items-center justify-center text-gray-400">
+                        No image
+                      </div>
+                    )}
+                    <div className="absolute top-3 right-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm font-semibold px-4 py-2 rounded-full shadow-lg">
+                      {room.price} ETB / night
+                    </div>
+                  </div>
+                  
+                  <div className="p-6 md:p-8 flex flex-col flex-grow">
+                    <h3 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white mb-2">{room.title}</h3>
+                    <p className="text-base md:text-lg text-gray-600 dark:text-gray-300 mb-4 line-clamp-2 flex-grow">{renderDescription(room.description)}</p>
+                    
+                    <div className="mb-5">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Amenities</span>
+                        <span className="text-sm bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 text-blue-700 dark:text-blue-300 px-2.5 py-0.5 rounded-full font-medium">
+                          {room.amenities?.length || 0}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {room.amenities?.slice(0, 4).map((item: string, i: number) => {
+                          const icon = getAmenityIcon(item);
+                          const colors = [
+                            'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800',
+                            'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800',
+                            'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800',
+                            'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800',
+                            'bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-900/30 dark:text-pink-300 dark:border-pink-800',
+                            'bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-900/30 dark:text-teal-300 dark:border-teal-800',
+                          ];
+                          const color = colors[i % colors.length];
+                          
+                          return (
+                            <span 
+                              key={i} 
+                              className={`inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-full border ${color} transition-all duration-300 hover:scale-110 hover:shadow-md cursor-default`}
+                            >
+                              <span className="text-base">{icon}</span>
+                              {item}
+                            </span>
+                          );
+                        })}
+                        {room.amenities?.length > 4 && (
+                          <span className="inline-flex items-center text-sm font-medium px-3 py-1.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600">
+                            +{room.amenities.length - 4} more
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <Link
+                      href={`/rooms/${room.slug}`}
+                      className="group relative inline-flex items-center justify-center w-full gap-2 px-6 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-base font-semibold rounded-xl transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/30 hover:scale-[1.02] overflow-hidden mt-auto"
+                    >
+                      <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></span>
+                      <span className="relative flex items-center gap-2">
+                        View Details
+                        <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                        </svg>
+                      </span>
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ===== AMENITIES ===== */}
       {amenities.length > 0 && (
@@ -349,107 +449,95 @@ export default async function Home() {
         </section>
       )}
 
-
-      
-
-    {/* ===== TESTIMONIALS / GUEST REVIEWS ===== */}
-{reviews.length > 0 && (
-  <section className="py-16 px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-gray-900" id="reviews">
-    <div className="max-w-7xl mx-auto">
-      {/* Section Header */}
-      <div className="text-center mb-12">
-        <span className="text-sm font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Testimonials</span>
-        <h2 className="text-3xl md:text-4xl font-bold text-gray-800 dark:text-white mt-2">
-          What Our Guests Say
-        </h2>
-        <div className="w-20 h-1 bg-gradient-to-r from-blue-600 to-purple-600 mx-auto mt-4 rounded-full"></div>
-        <p className="text-gray-500 dark:text-gray-400 mt-3 text-base max-w-2xl mx-auto">
-          Real reviews from real guests who stayed with us
-        </p>
-      </div>
-
-      {/* Reviews Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {reviews.map((review: any, index: number) => {
-          // Avatar
-          let avatarUrl = null;
-          if (review.avatar?.url) {
-            avatarUrl = review.avatar.url.startsWith('http') 
-              ? review.avatar.url 
-              : `${STRAPI_URL}${review.avatar.url}`;
-          }
-
-          // Room name
-          const roomName = review.room?.title || review.relatedRoom?.title || null;
-
-          // Format date
-          const formatDate = (dateString: string) => {
-            if (!dateString) return null;
-            const date = new Date(dateString);
-            return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-          };
-
-          return (
-            <div 
-              key={review.documentId} 
-              className="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-md hover:shadow-xl transition-all duration-400 hover:-translate-y-1.5 border border-gray-200/50 dark:border-gray-700/50 group relative overflow-hidden flex flex-col h-[210px]"
-            >
-              {/* Decorative gradient line */}
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 opacity-0 group-hover:opacity-100 transition-opacity duration-400"></div>
-
-              {/* Rating Stars */}
-              <div className="flex gap-0.5 mb-2.5">
-                {[...Array(5)].map((_, i) => (
-                  <svg 
-                    key={i} 
-                    className={`w-5 h-5 ${
-                      i < review.rating 
-                        ? 'text-yellow-400 fill-yellow-400' 
-                        : 'text-gray-300 dark:text-gray-600'
-                    }`}
-                    viewBox="0 0 20 20"
-                  >
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                  </svg>
-                ))}
-              </div>
-
-              {/* Review Text */}
-              <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed mb-3 flex-1 line-clamp-3">
-                "{review.comment}"
+      {/* ===== TESTIMONIALS / GUEST REVIEWS ===== */}
+      {reviews.length > 0 && (
+        <section className="py-16 px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-gray-900" id="reviews">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-12">
+              <span className="text-sm font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Testimonials</span>
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-800 dark:text-white mt-2">
+                What Our Guests Say
+              </h2>
+              <div className="w-20 h-1 bg-gradient-to-r from-blue-600 to-purple-600 mx-auto mt-4 rounded-full"></div>
+              <p className="text-gray-500 dark:text-gray-400 mt-3 text-base max-w-2xl mx-auto">
+                Real reviews from real guests who stayed with us
               </p>
-
-              {/* Guest Info */}
-              <div className="flex items-center gap-3 pt-3 border-t border-gray-200/50 dark:border-gray-700/50">
-                {/* Avatar */}
-                {avatarUrl ? (
-                  <img
-                    src={avatarUrl}
-                    alt={review.guestName}
-                    className="w-9 h-9 rounded-full object-cover ring-2 ring-blue-500/20 flex-shrink-0"
-                  />
-                ) : (
-                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm ring-2 ring-blue-500/20 flex-shrink-0">
-                    {review.guestName?.charAt(0) || 'G'}
-                  </div>
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="text-gray-800 dark:text-white font-semibold text-sm truncate">
-                    {review.guestName}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                    {roomName ? `🏨 ${roomName}` : '✨ Verified Guest'}
-                    {review.dateOfStay && ` • ${formatDate(review.dateOfStay)}`}
-                  </p>
-                </div>
-              </div>
             </div>
-          );
-        })}
-      </div>
-    </div>
-  </section>
-)}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {reviews.map((review: any, index: number) => {
+                let avatarUrl = null;
+                if (review.avatar?.url) {
+                  avatarUrl = review.avatar.url.startsWith('http') 
+                    ? review.avatar.url 
+                    : `${STRAPI_URL}${review.avatar.url}`;
+                }
+
+                const roomName = review.room?.title || review.relatedRoom?.title || null;
+
+                const formatDate = (dateString: string) => {
+                  if (!dateString) return null;
+                  const date = new Date(dateString);
+                  return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                };
+
+                return (
+                  <div 
+                    key={review.documentId} 
+                    className="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-md hover:shadow-xl transition-all duration-400 hover:-translate-y-1.5 border border-gray-200/50 dark:border-gray-700/50 group relative overflow-hidden flex flex-col h-[210px]"
+                  >
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 opacity-0 group-hover:opacity-100 transition-opacity duration-400"></div>
+
+                    <div className="flex gap-0.5 mb-2.5">
+                      {[...Array(5)].map((_, i) => (
+                        <svg 
+                          key={i} 
+                          className={`w-5 h-5 ${
+                            i < review.rating 
+                              ? 'text-yellow-400 fill-yellow-400' 
+                              : 'text-gray-300 dark:text-gray-600'
+                          }`}
+                          viewBox="0 0 20 20"
+                        >
+                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                        </svg>
+                      ))}
+                    </div>
+
+                    <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed mb-3 flex-1 line-clamp-3">
+                      "{review.comment}"
+                    </p>
+
+                    <div className="flex items-center gap-3 pt-3 border-t border-gray-200/50 dark:border-gray-700/50">
+                      {avatarUrl ? (
+                        <img
+                          src={avatarUrl}
+                          alt={review.guestName}
+                          className="w-9 h-9 rounded-full object-cover ring-2 ring-blue-500/20 flex-shrink-0"
+                        />
+                      ) : (
+                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm ring-2 ring-blue-500/20 flex-shrink-0">
+                          {review.guestName?.charAt(0) || 'G'}
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-gray-800 dark:text-white font-semibold text-sm truncate">
+                          {review.guestName}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                          {roomName ? `🏨 ${roomName}` : '✨ Verified Guest'}
+                          {review.dateOfStay && ` • ${formatDate(review.dateOfStay)}`}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
+
     </div>
   );
 }

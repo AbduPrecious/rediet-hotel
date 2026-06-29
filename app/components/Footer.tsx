@@ -128,42 +128,54 @@ export default function Footer() {
 
           </div>
 
-          {/* Column 2: Quick Links */}
-          <div>
-            <h4 className="text-lg font-semibold text-white mb-4">Quick Links</h4>
-            <ul className="space-y-3 text-sm">
-              <li>
-                <Link href="/" className="text-gray-400 hover:text-blue-400 transition flex items-center gap-2 group">
-                  <span className="w-1 h-1 bg-blue-400 rounded-full opacity-0 group-hover:opacity-100 transition"></span>
-                  Home
-                </Link>
-              </li>
-              <li>
-                <Link href="/#rooms" className="text-gray-400 hover:text-blue-400 transition flex items-center gap-2 group">
-                  <span className="w-1 h-1 bg-blue-400 rounded-full opacity-0 group-hover:opacity-100 transition"></span>
-                  Rooms
-                </Link>
-              </li>
-              <li>
-                <Link href="/#amenities" className="text-gray-400 hover:text-blue-400 transition flex items-center gap-2 group">
-                  <span className="w-1 h-1 bg-blue-400 rounded-full opacity-0 group-hover:opacity-100 transition"></span>
-                  Amenities
-                </Link>
-              </li>
-              <li>
-                <Link href="/about" className="text-gray-400 hover:text-blue-400 transition flex items-center gap-2 group">
-                  <span className="w-1 h-1 bg-blue-400 rounded-full opacity-0 group-hover:opacity-100 transition"></span>
-                  About Us
-                </Link>
-              </li>
-              <li>
-                <Link href="/contact" className="text-gray-400 hover:text-blue-400 transition flex items-center gap-2 group">
-                  <span className="w-1 h-1 bg-blue-400 rounded-full opacity-0 group-hover:opacity-100 transition"></span>
-                  Contact
-                </Link>
-              </li>
-            </ul>
-          </div>
+         {/* Column 2: Quick Links */}
+<div>
+  <h4 className="text-lg font-semibold text-white mb-4">Quick Links</h4>
+  <ul className="space-y-3 text-sm">
+    <li>
+      <Link href="/" className="text-gray-400 hover:text-blue-400 transition flex items-center gap-2 group">
+        <span className="w-1 h-1 bg-blue-400 rounded-full opacity-0 group-hover:opacity-100 transition"></span>
+        Home
+      </Link>
+    </li>
+    <li>
+      <Link href="/#rooms" className="text-gray-400 hover:text-blue-400 transition flex items-center gap-2 group">
+        <span className="w-1 h-1 bg-blue-400 rounded-full opacity-0 group-hover:opacity-100 transition"></span>
+        Rooms
+      </Link>
+    </li>
+    <li>
+      {hotelInfo?.menuLink ? (
+        <a
+          href={hotelInfo.menuLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-gray-400 hover:text-blue-400 transition flex items-center gap-2 group"
+        >
+          <span className="w-1 h-1 bg-blue-400 rounded-full opacity-0 group-hover:opacity-100 transition"></span>
+          Menu
+        </a>
+      ) : (
+        <Link href="/#amenities" className="text-gray-400 hover:text-blue-400 transition flex items-center gap-2 group">
+          <span className="w-1 h-1 bg-blue-400 rounded-full opacity-0 group-hover:opacity-100 transition"></span>
+          Amenities
+        </Link>
+      )}
+    </li>
+    <li>
+      <Link href="/about" className="text-gray-400 hover:text-blue-400 transition flex items-center gap-2 group">
+        <span className="w-1 h-1 bg-blue-400 rounded-full opacity-0 group-hover:opacity-100 transition"></span>
+        About Us
+      </Link>
+    </li>
+    <li>
+      <Link href="/contact" className="text-gray-400 hover:text-blue-400 transition flex items-center gap-2 group">
+        <span className="w-1 h-1 bg-blue-400 rounded-full opacity-0 group-hover:opacity-100 transition"></span>
+        Contact
+      </Link>
+    </li>
+  </ul>
+</div>
 
           {/* Column 3: Contact Info */}
           <div>

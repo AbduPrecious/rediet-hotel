@@ -71,6 +71,88 @@ export async function createBooking(bookingData: any) {
   }
 }
 
+// ===== CREATE BOOKING WITH PAYMENT SCREENSHOT =====
+export async function createBookingWithImage(formData: FormData) {
+  console.log('📤 createBookingWithImage called');
+  
+  try {
+    // Step 1: Extract data from FormData
+    const dataString = formData.get('data') as string;
+    const file = formData.get('files.paymentScreenshot') as File;
+    
+    if (!dataString) {
+      throw new Error('No data found in FormData');
+    }
+    
+    const bookingData = JSON.parse(dataString);
+    console.log('📤 Booking data:', bookingData);
+    
+    // Step 1: Create booking first
+    const bookingResult = await createBooking(bookingData);
+    console.log('✅ Booking created. ID:', bookingResult.data?.id);
+    
+    // Step 2: Upload image if exists
+    if (file && file.size > 0 && bookingResult.data?.id) {
+      console.log('📤 Uploading image...');
+      
+      // ✅ APPROACH 1: Upload to media library first
+      const uploadFormData = new FormData();
+      uploadFormData.append('files', file);
+      
+      const uploadRes = await fetch(`${STRAPI_URL}/api/upload`, {
+        method: 'POST',
+        body: uploadFormData,
+      });
+      
+      if (!uploadRes.ok) {
+        const errorText = await uploadRes.text();
+        console.error('❌ Upload failed:', uploadRes.status, errorText);
+        return bookingResult;
+      }
+      
+      const uploadData = await uploadRes.json();
+      console.log('✅ Image uploaded to media library:', uploadData);
+      
+      // Step 3: Link the image to the booking
+      if (uploadData && uploadData[0]?.id) {
+        const imageId = uploadData[0].id;
+        console.log('📤 Linking image (ID:', imageId, ') to booking');
+        
+        // ✅ Update the booking with the image ID
+        const updateRes = await fetch(`${STRAPI_URL}/api/bookings/${bookingResult.data.documentId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            data: {
+              paymentScreenshot: imageId,
+            },
+          }),
+        });
+        
+        if (updateRes.ok) {
+          const updateData = await updateRes.json();
+          console.log('✅ Image linked to booking successfully:', updateData);
+          return {
+            ...bookingResult,
+            imageUploaded: true,
+          };
+        } else {
+          const errorText = await updateRes.text();
+          console.error('❌ Failed to link image:', updateRes.status, errorText);
+        }
+      }
+    }
+    
+    return bookingResult;
+    
+  } catch (error) {
+    console.error('❌ createBookingWithImage error:', error);
+    throw error;
+  }
+}
+
 // ===== FETCH HOTEL INFO (SINGLE TYPE) =====
 export async function getHotelInfo() {
   try {

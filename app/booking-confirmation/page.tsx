@@ -20,6 +20,12 @@ function ConfirmationContent() {
     const totalPrice = searchParams.get('totalPrice');
     const roomName = searchParams.get('roomName');
 
+    // ✅ Save user info to localStorage for dashboard
+    if (name && email) {
+      localStorage.setItem('userName', name);
+      localStorage.setItem('userEmail', email);
+    }
+
     setBookingData({
       name,
       email,
@@ -57,13 +63,11 @@ function ConfirmationContent() {
     });
   };
 
-  // Generate booking reference number
   const bookingRef = `RH-${Date.now().toString().slice(-8)}-${Math.floor(Math.random() * 1000)}`;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-300">
-      {/* ===== NAVBAR ===== */}
-      <NavbarWrapper hotelName="Rediet Hotel" />
+      <NavbarWrapper hotelName="Rediet Hotel - Shashamane" />
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12" id="receipt-container">
         <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl overflow-hidden transition-colors duration-300">
@@ -90,8 +94,8 @@ function ConfirmationContent() {
               </p>
             </div>
 
-            {/* Booking Details - Receipt Style */}
-            <div className="bg-gray-50 dark:bg-gray-900/50 rounded-2xl p-6 mb-8 border border-gray-200 dark:border-gray-700 transition-colors duration-300">
+            {/* Booking Details */}
+            <div className="bg-gray-50 dark:bg-gray-900/50 rounded-2xl p-6 mb-8 border border-gray-200 dark:border-gray-700">
               <h2 className="text-lg font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
                 📋 Booking Details
               </h2>
@@ -131,8 +135,8 @@ function ConfirmationContent() {
               </div>
             </div>
 
-            {/* Next Steps - HIDDEN WHEN PRINTING */}
-            <div className="bg-blue-50 dark:bg-blue-900/30 rounded-2xl p-6 mb-8 border border-blue-200 dark:border-blue-800 no-print-section transition-colors duration-300">
+            {/* Next Steps */}
+            <div className="bg-blue-50 dark:bg-blue-900/30 rounded-2xl p-6 mb-8 border border-blue-200 dark:border-blue-800 no-print-section">
               <h3 className="font-bold text-blue-800 dark:text-blue-300 mb-3 flex items-center gap-2">
                 📌 What's Next?
               </h3>
@@ -152,24 +156,30 @@ function ConfirmationContent() {
               </ul>
             </div>
 
-            {/* Action Buttons - HIDDEN WHEN PRINTING */}
-            <div className="flex flex-col sm:flex-row gap-4 no-print">
-              <button
-                onClick={handlePrint}
-                className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-center py-3.5 rounded-xl font-semibold hover:shadow-lg transition transform hover:scale-[1.02] flex items-center justify-center gap-2"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                </svg>
-                🖨️ Print Receipt
-              </button>
-              <Link
-                href="/"
-                className="flex-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-center py-3.5 rounded-xl font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition"
-              >
-                🏠 Back to Home
-              </Link>
-            </div>
+            {/* Action Buttons - Better Visibility in Light Mode */}
+<div className="flex flex-col sm:flex-row gap-4 no-print">
+  <button
+    onClick={handlePrint}
+    className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-center py-3.5 rounded-xl font-semibold hover:shadow-lg transition transform hover:scale-[1.02] flex items-center justify-center gap-2"
+  >
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+    </svg>
+    🖨️ Print Receipt
+  </button>
+  <Link
+    href="/dashboard"
+    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-center py-3.5 rounded-xl font-semibold transition transform hover:scale-[1.02] shadow-md"
+  >
+    📊 My Dashboard
+  </Link>
+  <Link
+    href="/"
+    className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 text-center py-3.5 rounded-xl font-semibold transition transform hover:scale-[1.02]"
+  >
+    🏠 Back to Home
+  </Link>
+</div>
           </div>
         </div>
 

@@ -109,7 +109,7 @@ export default async function RoomsPage() {
                     </div>
                   )}
                   <div className="absolute top-3 right-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm font-semibold px-4 py-2 rounded-full shadow-lg">
-                    ETB {room.price || 0} / night
+                     {room.price || 0} ETB/ night
                   </div>
                 </div>
                 

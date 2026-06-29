@@ -2,11 +2,10 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { createBooking } from '@/lib/strapi';
+import { createBooking, createBookingWithImage } from '@/lib/strapi';
 import NavbarWrapper from '@/app/components/NavbarWrapper';
 
 const STRAPI_URL = process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337';
-
 // ===== HELPER: RENDER DESCRIPTION =====
 const renderDescription = (desc: any) => {
   if (!desc) return 'Comfortable room with modern amenities.';
@@ -153,7 +152,7 @@ export default function RoomDetailClient({ room, slug, hotelName }: { room: any;
 
   const roomImages = room.images || [];
 
-// ===== BOOKING HANDLER - WITH REDIRECT =====
+// ===== BOOKING HANDLER - WITH PAYMENT SCREENSHOT =====
 const handleBookingSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
   e.preventDefault();
   setBookingStatus('loading');
@@ -167,10 +166,37 @@ const handleBookingSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
   const checkOut = formData.get('checkOut') as string;
   const guests = formData.get('guests') as string;
   const specialRequests = formData.get('specialRequests') as string || '';
+  const paymentScreenshot = formData.get('paymentScreenshot') as File;
 
+  // Validation
   if (!guestName || !guestEmail || !guestPhone || !checkIn || !checkOut) {
     setBookingStatus('error');
     setBookingMessage('❌ Please fill in all fields');
+    setTimeout(() => setBookingStatus('idle'), 3000);
+    return;
+  }
+
+  // Validate payment screenshot
+  if (!paymentScreenshot || paymentScreenshot.size === 0) {
+    setBookingStatus('error');
+    setBookingMessage('❌ Please upload a payment screenshot');
+    setTimeout(() => setBookingStatus('idle'), 3000);
+    return;
+  }
+
+  // Validate file type
+  const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
+  if (!validTypes.includes(paymentScreenshot.type)) {
+    setBookingStatus('error');
+    setBookingMessage('❌ Please upload a valid image (JPG, PNG, WebP)');
+    setTimeout(() => setBookingStatus('idle'), 3000);
+    return;
+  }
+
+  // Validate file size (max 5MB)
+  if (paymentScreenshot.size > 5 * 1024 * 1024) {
+    setBookingStatus('error');
+    setBookingMessage('❌ Image size must be less than 5MB');
     setTimeout(() => setBookingStatus('idle'), 3000);
     return;
   }
@@ -188,25 +214,36 @@ const handleBookingSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
   const nights = Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24));
   const totalPrice = nights * room.price;
 
-  const bookingData = {
-    guestName: guestName,
-    email: guestEmail,
-    phone: guestPhone,
-    checkIn: checkIn,
-    checkOut: checkOut,
-    numberOfGuests: parseInt(guests),
-    totalPrice: totalPrice,
-    statuss: 'pending',
-    specialRequests: specialRequests,
-  };
+  // Create FormData for upload
+const bookingFormData = new FormData();
 
-  console.log('📤 Sending booking data:', bookingData);
+const dataPayload = {
+  guestName: guestName,
+  email: guestEmail,
+  phone: guestPhone,
+  checkIn: checkIn,
+  checkOut: checkOut,
+  numberOfGuests: parseInt(guests),
+  totalPrice: totalPrice,
+  statuss: 'pending',
+  specialRequests: specialRequests,
+  paymentStatus: 'pending',
+  room: room.id,  // ✅ Add this!
+};
+
+bookingFormData.append('data', JSON.stringify(dataPayload));
+bookingFormData.append('files.paymentScreenshot', paymentScreenshot); 
+
+  console.log('📤 Booking FormData entries:');
+  for (let pair of bookingFormData.entries()) {
+    console.log(`  ${pair[0]}:`, pair[1] instanceof File ? `File(${pair[1].name})` : pair[1]);
+  }
 
   try {
-    const result = await createBooking(bookingData);
+    const result = await createBookingWithImage(bookingFormData);
     console.log('✅ SUCCESS:', result);
     
-    // ✅ REDIRECT TO CONFIRMATION PAGE
+    // Redirect to confirmation page
     const params = new URLSearchParams({
       name: guestName,
       email: guestEmail,
@@ -221,8 +258,20 @@ const handleBookingSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     
   } catch (error: any) {
     console.error('❌ ERROR:', error);
+    console.error('❌ Error message:', error.message);
+    
+    let errorMessage = '❌ Failed to create booking. Please try again.';
+    
+    if (error.message && error.message.includes('400')) {
+      errorMessage = '❌ Bad request. Please check your booking details.';
+    } else if (error.message && error.message.includes('500')) {
+      errorMessage = '❌ Server error. Please try again later.';
+    } else if (error.message && error.message.includes('paymentScreenshot')) {
+      errorMessage = '❌ Error uploading payment screenshot. Please try again.';
+    }
+    
     setBookingStatus('error');
-    setBookingMessage('❌ Failed to create booking. Please try again.');
+    setBookingMessage(errorMessage);
     setTimeout(() => {
       setBookingStatus('idle');
       setBookingMessage('');
@@ -429,7 +478,7 @@ const handleBookingSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                 {/* Price */}
                 <div className="text-center pb-4 mb-4 border-b-2 border-gray-100/80 dark:border-gray-700">
                   <span className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                    ETB {room.price}
+                    {room.price} ETB
                   </span>
                   <span className="text-gray-500 dark:text-gray-400 text-sm md:text-base ml-1">/ night</span>
                 </div>
@@ -545,6 +594,22 @@ const handleBookingSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                     />
                   </div>
 
+                  {/* ===== PAYMENT SCREENSHOT ===== */}
+<div>
+  <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 block mb-1.5 flex items-center gap-1">
+    📸 Payment Screenshot *
+  </label>
+  <input
+  type="file"
+  name="paymentScreenshot"  // ✅ This must match the field name in Strapi
+  accept="image/jpeg,image/png,image/webp"
+  required
+  className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-700 dark:text-white dark:bg-gray-900/50 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900/30 dark:file:text-blue-400"
+/>
+  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+    Upload your payment confirmation (JPG, PNG, WebP • Max 5MB)
+  </p>
+</div>
                   <button
                     type="submit"
                     disabled={bookingStatus === 'loading'}
